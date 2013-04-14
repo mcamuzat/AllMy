@@ -17,7 +17,7 @@ abstract class Connection extends FileDescriptor implements ITCPTransport, ISyst
     public function __construct($skt, $protocol, $reactor=null) {
         parent::__construct($reactor);
         $this->socket = $skt;
-        stream_set_blocking($this->socket,0);
+        stream_set_blocking($skt,0);
        // /$this->socket.setblocking(0);
         $this->fileno = (int)$skt;
         $this->protocol = $protocol;

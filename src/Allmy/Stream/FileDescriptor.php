@@ -202,7 +202,7 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
             if ($data) {
             $this->_tempDataBuffer .= $data;
             $this->_tempDataLen += strlen($data);
-            $this->_maybePauseProducer();
+            //$this->_maybePauseProducer();
             $this->startWriting();
         }
     }
@@ -284,8 +284,6 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * for writing.
      */
     public function stopWriting() {
-        echo 'hhaha';
-        die();
         $this->reactor->removeWriter($this);
     }
     
@@ -303,7 +301,7 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * writing.
      */
     public function startWriting() {
-        $this->reactor->addWriter($this);
+       $this->reactor->addWriter($this);
     }
         # Producer/consumer implementation
 

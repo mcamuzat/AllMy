@@ -48,6 +48,7 @@ class StreamSelectReactor implements IReactor
     public function addWriter($filedescriptor)
     {
         $id = (int) $filedescriptor->socket;
+        echo $id;
         if (!isset($this->writeStreams[$id])) {
             $this->writeStreams[$id] = $filedescriptor->socket;
             $this->writers[$id] = $filedescriptor;
@@ -59,7 +60,7 @@ class StreamSelectReactor implements IReactor
         
         $id = (int) $filedescriptor->socket;
 
-        if (!isset($this->readStreams[$id])) {
+        if (isset($this->readStreams[$id])) {
             unset($this->readStreams[$id]);
             unset($this->readers[$id]);
         }
@@ -67,7 +68,7 @@ class StreamSelectReactor implements IReactor
     public function removeWriter($filedescriptor)
     {
         $id = (int) $filedescriptor->socket;
-        if (!isset($this->writeStreams[$id])) {
+        if (isset($this->writeStreams[$id])) {
             unset($this->writeStreams[$id]);
             unset($this->writers[$id]);
         }
@@ -76,7 +77,6 @@ class StreamSelectReactor implements IReactor
     public function addWriteStream($stream, $listener)
     {
         $id = (int) $stream;
-
         if (!isset($this->writeStreams[$id])) {
             $this->writeStreams[$id] = $stream;
             $this->writeListeners[$id] = $listener;
@@ -127,7 +127,7 @@ class StreamSelectReactor implements IReactor
     protected function getNextEventTimeInMicroSeconds()
     {
         $nextEvent = $this->timers->getFirst();
-
+        
         if (null === $nextEvent) {
             return self::QUANTUM_INTERVAL;
         }
@@ -157,13 +157,13 @@ class StreamSelectReactor implements IReactor
         $read = $this->readStreams ?: null;
         $write = $this->writeStreams ?: null;
         $except = null;
-        var_dump($read, $write);
-        echo '--------------------';
-        if (!$read && !$write) {
+          if (!$read && !$write) {
             $this->sleepOnPendingTimers();
 
             return;
         }
+
+        
         if (stream_select($read, $write, $except, 0, $this->getNextEventTimeInMicroSeconds()) > 0) {
             if ($read) {
                 foreach ($read as $stream) {
@@ -174,7 +174,7 @@ class StreamSelectReactor implements IReactor
                  }
             }
             if ($write) {
-                foreach ($read as $stream) {
+                foreach ($write as $stream) {
                     $id = (int) $stream;
                     if (isset($this->writers[$id])) {
                         $this->writers[$id]->doWrite();

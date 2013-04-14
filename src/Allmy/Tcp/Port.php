@@ -90,7 +90,9 @@ class Port extends BasePort {
             $message = "Could not bind to tcp://$$this->interface:$this->port: $errstr";
             throw new \Exception($message);
         }
-        
+        stream_set_blocking($socket, 0);
+
+
         $this->factory->doStart();
         $this->connected = True;
         $this->socket = $socket;
