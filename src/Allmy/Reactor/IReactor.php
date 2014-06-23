@@ -18,11 +18,12 @@ interface IReactor
     public function addTimer($interval, $callback);
     public function addPeriodicTimer($interval, $callback);
     public function cancelTimer($signature);
-
+    public function callWhenRunning($callback);
     public function tick();
     public function run();
     public function stop();
     public function listenTCP($port, IProtocolFactory $factory, $backlog=50, $interface='');
+    public function connectTCP($host, $port, $factory, $timeout=30, $bindAddress=null);
 
 }
 

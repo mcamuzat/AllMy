@@ -4,7 +4,7 @@ namespace Allmy\Reactor\Timer;
 
 use Allmy\Reactor\IReactor;
 
-class Timers 
+class Timers
 {
     const MIN_RESOLUTION = 0.001;
 
@@ -83,7 +83,11 @@ class Timers
             $timer = $timers->extract();
 
             if (isset($this->active[$timer->signature])) {
-                call_user_func($timer->callback, $timer->signature, $this->reactor);
+                try {
+                    call_user_func($timer->callback, $timer->signature, $this->reactor);
+                } catch (Exception $e) {
+                    echo $e->getTraceAsString();
+                }
 
                 if ($timer->periodic === true) {
                     $timer->scheduled = $timer->interval + $time;

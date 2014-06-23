@@ -12,23 +12,27 @@ use Allmy\Tcp\ITCPTransport ;
  * @ivar logstr: prefix used when logging events related to this connection.
  * @type logstr: C{str}
  */
-abstract class Connection extends FileDescriptor implements ITCPTransport, ISystemHandle
+abstract class Connection extends FileDescriptor implements ITCPTransport, ISystemHandle 
 {
+    use TSocketCloser, TAbortingMixin;
+
     public function __construct($skt, $protocol, $reactor=null) {
         parent::__construct($reactor);
         $this->socket = $skt;
         stream_set_blocking($skt,0);
-       // /$this->socket.setblocking(0);
         $this->fileno = (int)$skt;
         $this->protocol = $protocol;
     }
 
-        /**Return the socket for this connection.*/
+    /** 
+     * Return the socket for this connection.
+     */
     public function getHandle() {
         return $this->socket;
     }
 
-    /**Calls $this->protocol.dataReceived with all available data.
+    /**
+     * Calls $this->protocol.dataReceived with all available data.
      *
      * This reads up to $this->bufferSize bytes of data from its socket, then
      * calls $this->dataReceived(data) to process it.  If the connection is not
@@ -46,23 +50,29 @@ abstract class Connection extends FileDescriptor implements ITCPTransport, ISyst
         return $this->_dataReceived($data);
 
     }
+    
     public function _dataReceived($data){
      //   if not data:
      //       return main.CONNECTION_DONE
          $this->protocol->dataReceived($data);
     }
 
-    public function writeSomeData($data) {
-      //  stream_socket_sendto($this->socket, $data);
-        /**
-        Write as much as possible of the given data to this TCP connection.
+    /**
+     * Write as much as possible of the given data to this TCP connection.
+     *
+     * This sends up to C{$this->SEND_LIMIT} bytes from C{data}.  If the
+     * connection is lost, an exception is returned.  Otherwise, the number
+     * of bytes successfully written is returned.
+     */
+    public function writeSomeData($data)
+    {
+        stream_socket_sendto($this->socket, $data);
+        return strlen($data);
 
-        This sends up to C{$this->SEND_LIMIT} bytes from C{data}.  If the
-        connection is lost, an exception is returned.  Otherwise, the number
-        of bytes successfully written is returned.
-        */
         # Limit length of buffer to try to send, because some OSes are too
         # stupid to do so themselves (ahem windows)
+
+      //  stream_socket_sendto($this->socket, $data);
       //  limitedData = lazyByteSlice(data, 0, $this->SEND_LIMIT)
 
  /**       try:
@@ -104,25 +114,25 @@ abstract class Connection extends FileDescriptor implements ITCPTransport, ISyst
 
         /**See abstract.FileDescriptor.connectionLost().
         */
-    public function connectionLost($reason) {
-    }
+    public function connectionLost($reason=null) {
         # Make sure we're not called twice, which can happen e.g. if
         # abortConnection() is called from protocol's dataReceived and then
         # code immediately after throws an exception that reaches the
         # reactor. We can't rely on "disconnected" attribute for this check
         # since twisted.internet._oldtls does evil things to it:
-     /*   if not hasattr(self, "socket"):
-            return
-        abstract.FileDescriptor.connectionLost(self, reason)
-        $this->_closeSocket(not reason.check(error.ConnectionAborted))
-        protocol = $this->protocol
-        del self.protocol
-        del $this->socket
-        del $this->fileno
-        protocol.connectionLost(reason)
+        if (!$this->socket) {
+             return;
+        }
+        parent::connectionLost($reason);
+        $this->_closeSocket($reason/*not reason.check(error.ConnectionAborted)*/);
+        $protocol = $this->protocol;
+        unset($this->protocol);
+        unset($this->socket);
+        unset($this->fileno);
+        $protocol->connectionLost($reason);
 
     }
-    logstr = "Uninitialized"
+    //public $logstr = "Uninitialized";
 
         /**Return the prefix to log with when I own the logging thread.
         */

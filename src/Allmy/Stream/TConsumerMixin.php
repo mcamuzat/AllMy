@@ -71,23 +71,26 @@ trait TConsumerMixin {
         pauseProducing(), but it has to be careful to write() data only when its
         resumeProducing() method is called.
         */
-     /*   if self.producer is not None:
-            raise RuntimeError(
-                "Cannot register producer %s, because producer %s was never "
-                "unregistered." % (producer, self.producer))
-        if self.disconnected:
-            producer.stopProducing()
-        else:
-            self.producer = producer
-            self.streamingProducer = streaming
-            if not streaming:
-                producer.resumeProducing()*/
+        if ($this->producer) { 
+            throw RuntimeError(sprintf(
+                "Cannot register producer %s, because producer %s was never unregistered.", $producer, $this->producer));
+        }
+        if ($this->disconnected) {
+            $producer->stopProducing();
+        } else {
+            $this->producer = $producer;
+            $this->streamingProducer = $streaming;
+            if (!$streaming) {
+                $producer->resumeProducing();
+            }
+        }
 
     }
-    public function unregisterProducer() {
+
         /**
         Stop consuming data from a producer, without disconnecting.
         */
+    public function unregisterProducer() {
       /*  self.producer = None
         if self.connected and self.disconnecting:
             self.startWriting()*/

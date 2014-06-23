@@ -5,8 +5,10 @@ namespace Allmy\Reactor;
 use Allmy\Reactor\Timer\Timers;
 use Allmy\Protocol\IProtocolFactory;
 use Allmy\Tcp\Port;
+use Evenement\EventEmitter;
 
-class StreamSelectReactor implements IReactor
+
+class StreamSelectReactor extends EventEmitter implements IReactor
 {
     const QUANTUM_INTERVAL = 1000000;
 
@@ -18,6 +20,7 @@ class StreamSelectReactor implements IReactor
     private $readListeners = array();
     private $writeStreams = array();
     private $writeListeners = array();
+    private $callbackWhenRun = array();
 
     public function __construct()
     {
@@ -48,7 +51,7 @@ class StreamSelectReactor implements IReactor
     public function addWriter($filedescriptor)
     {
         $id = (int) $filedescriptor->socket;
-        echo $id;
+        
         if (!isset($this->writeStreams[$id])) {
             $this->writeStreams[$id] = $filedescriptor->socket;
             $this->writers[$id] = $filedescriptor;
@@ -72,6 +75,12 @@ class StreamSelectReactor implements IReactor
             unset($this->writeStreams[$id]);
             unset($this->writers[$id]);
         }
+    }
+
+
+    public function callWhenRunning($callback)
+    {
+        $this->on('startup',$callback);
     }
 
     public function addWriteStream($stream, $listener)
@@ -123,7 +132,48 @@ class StreamSelectReactor implements IReactor
     {
         $this->timers->cancel($signature);
     }
+        /**
+            Call a function later.
 
+            @type delay:  C{float}
+            @param delay: the number of seconds to wait.
+
+            @param callable: the callable object to call later.
+
+            @param args: the arguments to call it with.
+
+            @param kw: the keyword arguments to call it with.
+
+            @return: An object which provides L{IDelayedCall} and can be used to
+            cancel the scheduled call, by calling its C{cancel()} method.
+            It also may be rescheduled by calling its C{delay()} or
+            C{reset()} methods.
+         */
+
+    public function callLater($delay, $callback, $args) {
+    }
+    public function startRunning() {
+        /**
+        Method called when reactor starts: do some initialization and fire
+        startup events.
+
+        Don't call this directly, call reactor.run() instead: it should take
+        care of calling this.
+
+        This method is somewhat misnamed.  The reactor will not necessarily be
+        in the running state by the time this method returns.  The only
+        guarantee is that it will be on its way to the running state.
+         */
+        /*if ($this->_started) {
+            raise error.ReactorAlreadyRunning()
+        }*/
+        /*if ($this->_startedBefore) {
+            raise error.ReactorNotRestartable()
+        }*/
+        $this->_started = True;
+        $this->_stopped = False;
+        $this->emit('startup');
+    }
     protected function getNextEventTimeInMicroSeconds()
     {
         $nextEvent = $this->timers->getFirst();
@@ -143,7 +193,7 @@ class StreamSelectReactor implements IReactor
     protected function sleepOnPendingTimers()
     {
         if ($this->timers->isEmpty()) {
-            $this->running = false;
+            //$this->running = false;
         } else {
             // We use usleep() instead of stream_select() to emulate timeouts
             // since the latter fails when there are no streams registered for
@@ -197,7 +247,7 @@ class StreamSelectReactor implements IReactor
     public function run()
     {
         $this->running = true;
-
+        $this->startRunning();
         while ($this->tick()) {
             // NOOP
         }
@@ -213,7 +263,33 @@ class StreamSelectReactor implements IReactor
     {
         $port = new Port($port, $factory,$backlog,$interface,$this);
         $port->startListening();
-
+        return $port;
     }
+        /**
+        Connect a TCP client.
+
+        @param host: a host name
+
+        @param port: a port number
+
+        @param factory: a L{twisted.internet.protocol.ClientFactory} instance
+
+        @param timeout: number of seconds to wait before assuming the
+                        connection has failed.
+
+        @param bindAddress: a (host, port) tuple of local address to bind
+                            to, or None.
+
+        @return: An object which provides L{IConnector}. This connector will
+                 call various callbacks on the factory when a connection is
+                 made, failed, or lost - see
+                 L{ClientFactory<twisted.internet.protocol.ClientFactory>}
+                 docs for details.
+         */
+
+    public function connectTCP($host, $port, $factory, $timeout=30, $bindAddress=null) {
+        
+    }
+
 
 }

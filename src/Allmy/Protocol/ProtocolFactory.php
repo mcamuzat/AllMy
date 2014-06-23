@@ -9,7 +9,8 @@ namespace Allmy\Protocol;
  */
 
 abstract class ProtocolFactory implements IProtocolFactory {
-    /**Create an instance of a subclass of Protocol.
+    /**
+     * Create an instance of a subclass of Protocol.
      * 
      * The returned instance will handle input on an incoming server
      * connection, and an attribute \"factory\" pointing to the creating
@@ -19,7 +20,6 @@ abstract class ProtocolFactory implements IProtocolFactory {
      * 
      * @param addr: an object implementing L{twisted.internet.interfaces.IAddress}
      */
-
     abstract public function buildProtocol($addr);
 
     # put a subclass of Protocol here:
@@ -43,7 +43,7 @@ abstract class ProtocolFactory implements IProtocolFactory {
     public  function doStart() {
         if ($this->numPorts == 0) {
             if ($this->noisy) {
-                echo("Starting factory");
+                echo("Starting factory \n");
                 $this->startFactory();
             }
         }
@@ -56,8 +56,8 @@ abstract class ProtocolFactory implements IProtocolFactory {
      */
     public function doStop() {
         if ($this->numPorts == 0) {
-            # this shouldn't happen, but does sometimes and this is better
-            # than blowing up in assert as we did previously.
+            // this shouldn't happen, but does sometimes and this is better
+            // than blowing up in assert as we did previously.
             return;
         }
 
@@ -70,7 +70,10 @@ abstract class ProtocolFactory implements IProtocolFactory {
             }
         }
     }
-    /**This will be called before I begin listening on a Port or Connector.
+
+
+    /**
+     * This will be called before I begin listening on a Port or Connector.
      * 
      * It will only be called once, even if the factory is connected
      * to multiple ports.
@@ -83,15 +86,16 @@ abstract class ProtocolFactory implements IProtocolFactory {
 
     }
 
-        /**This will be called before I stop listening on all Ports/Connectors.
-
-        * This can be overridden to perform 'shutdown' tasks such as disconnecting
-        * database connections, closing files, etc.
-* 
-        * It will be called, for example, before an application shuts down,
-        * if it was connected to a port. User code should not call this function
-        * directly.
-         */
+    /**
+     * This will be called before I stop listening on all Ports/Connectors.
+     *
+     * This can be overridden to perform 'shutdown' tasks such as disconnecting
+     * database connections, closing files, etc.
+     * 
+     * It will be called, for example, before an application shuts down,
+     * if it was connected to a port. User code should not call this function
+     * directly.
+     */
     public function  stopFactory() {
     }
 

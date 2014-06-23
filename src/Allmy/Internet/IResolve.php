@@ -1,6 +1,5 @@
 <?php
 interface IResolver implements IResolverSimple {
-    public function query(query, timeout=None);
         /**
         Dispatch C{query} to the method which can handle its type.
 
@@ -22,8 +21,8 @@ interface IResolver implements IResolverSimple {
             C{NotImplementedError}.
         */
 
+    public function query(query, timeout=None);
 
-    public function lookupAddress(name, timeout=None);
         /**
         Perform an A record lookup.
 
@@ -43,9 +42,9 @@ interface IResolver implements IResolverSimple {
             exceptions public functionined in L{twisted.names.error} or with
             C{NotImplementedError}.
         */
+    public function lookupAddress(name, timeout=None);
 
 
-    public function lookupAddress6(name, timeout=None):
         /**
         Perform an A6 record lookup.
 
@@ -66,6 +65,7 @@ interface IResolver implements IResolverSimple {
             C{NotImplementedError}.
         */
 
+    public function lookupAddress6(name, timeout=None):
 
     public function lookupIPV6Address(name, timeout=None):
         /**

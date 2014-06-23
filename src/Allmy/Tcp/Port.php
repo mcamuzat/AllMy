@@ -184,6 +184,46 @@ class Port extends BasePort {
         log.deferr()*/
     }
 
+
+    /**
+     * Stop accepting connections on this port.
+     * 
+     * This will shut down the socket and call self.connectionLost().  It
+     * returns a deferred which will fire successfully when the port is
+     * actually closed, or with a failure if an error occurs shutting down.
+     */
+    public function loseConnection($connDone = null/*=failure.Failure(main.CONNECTION_DONE)*/) 
+    {
+        $this->disconnecting = True;
+        $this->stopReading();
+        if ($this->connected) {
+            $this->connectionLost($connDone);
+        }
+    }
+
+    /**
+     * Cleans up the socket.
+     */
+    public function connectionLost($reason)
+    {
+        $this->_logConnectionLostMsg();
+        $this->_realPortNumber = null;
+
+        parent::connectionLost($reason);
+        $this->connected = False;
+        $this->_closeSocket(True);
+        unset($this->socket);
+        unset($this->fileno);
+
+        try {
+            $this->factory->doStop();
+        }
+        catch (Exception $e) {
+
+        }
+        $this->disconnecting = False;
+    }
+
     public function handleConnection($socket)
     {
         stream_set_blocking($socket, 0);

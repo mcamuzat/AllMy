@@ -17,7 +17,7 @@ namespace Allmy\Protocol;
  * Some subclasses exist already to help you write common types of protocols:
  * see the L{twisted.protocols.basic} module for a few of them.
  */
-abstract class Protocol extends BaseProtocol implements IProtocol, ILoggingContext {
+abstract class Protocol extends BaseProtocol implements IProtocol {
     /**
      * Return a prefix matching the class name, to identify log messages
      * related to this protocol instance.
@@ -41,7 +41,9 @@ abstract class Protocol extends BaseProtocol implements IProtocol, ILoggingConte
      * differing chunk sizes, down to one byte at a time.
      */
 
-    public abstract function dataReceived($data);
+    public function dataReceived($data) {
+
+    }
 
     /**
      * Called when the connection is shut down.

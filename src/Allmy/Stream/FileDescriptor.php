@@ -17,14 +17,30 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
     protected $_writeDisconnected = False;
     protected $dataBuffer = "";
     protected $offset = 0;
+    public $producer = Null;
+    public $bufferSize = 65536; //2**2**2**2
 
-    //const SEND_LIMIT = 128*1024;
+    const SEND_LIMIT = 131072;
 
-    function __construct($reactor) {
+    function __construct($reactor)
+    {
         $this->reactor = $reactor;
-        $this->_tempDataBuffer = ''; # will be added to dataBuffer in doWrite
+        $this->_tempDataBuffer = array(); # will be added to dataBuffer in doWrite
         $this->_tempDataLen = 0;
+
     } 
+
+
+
+    public function _concatenate($bObj, $offset, array $bArray)
+    {
+        # Python 3 lacks the buffer() builtin and the other primitives don't
+        # help in this case.  Just do the copy.  Perhaps later these buffers can
+        # be joined and FileDescriptor can use writev().  Or perhaps bytearrays
+        # would help.
+        return substr($bObj, $offset) . implode("" ,$bArray);
+
+    }
 
 
     /**
@@ -36,15 +52,17 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      *
      * Clean up state here, but make sure to call back up to FileDescriptor.
      */
-    public function connectionLost($reason) {
+    public function connectionLost($reason)
+    {
         $this->disconnected = 1;
         $this->connected = 0;
-        if (!$this->producer) {
+        if ($this->producer) {
             $this->producer->stopProducing();
             $this->producer = null;
         }
         $this->stopReading();
         $this->stopWriting();
+
     }
 
 
@@ -71,6 +89,7 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      */
     public abstract function doRead() ;
 
+
     /**
      * Called when data can be written.
      * 
@@ -80,59 +99,61 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * @see: L{twisted.internet.interfaces.IWriteDescriptor.doWrite}.
      */
     public function doWrite() {
-        stream_socket_sendto($this->socket, $this->_tempDataBuffer);
-        $this->_tempDataBuffer = '';
-        $this->_tempDataLen = 0;
-        $this->stopWriting();
 
-      /*  if (len($this->dataBuffer) - $this->offset < $this->SEND_LIMIT) {
+        if (strlen($this->dataBuffer) - $this->offset < self::SEND_LIMIT) {
             # If there is currently less than SEND_LIMIT bytes left to send
             # in the string, extend it with the array data.
-            $this->dataBuffer = _concatenate(
-                $this->dataBuffer, $this->offset, $this->_tempDataBuffer)
-                $this->offset = 0
-                $this->_tempDataBuffer = []
-                $this->_tempDataLen = 0
+            $this->dataBuffer = $this->_concatenate(
+                $this->dataBuffer, $this->offset, $this->_tempDataBuffer);
+            $this->offset = 0;
+            $this->_tempDataBuffer = [];
+            $this->_tempDataLen = 0;
+        }
 
-                # Send as much data as you can.
-                if $this->offset:
-                    l = $this->writeSomeData(lazyByteSlice($this->dataBuffer, $this->offset))
-                else:
-                    l = $this->writeSomeData($this->dataBuffer)
+        # Send as much data as you can.
+        if ($this->offset) {
+            $l = $this->writeSomeData(lazyByteSlice($this->dataBuffer, $this->offset));
+        } else {
+            $l = $this->writeSomeData($this->dataBuffer);
+        }
+        # There is no writeSomeData implementation in Twisted which returns
+        # < 0, but the documentation for writeSomeData used to claim negative
+        # integers meant connection lost.  Keep supporting this here,
+        # although it may be worth deprecating and removing at some point.
+        //if isinstance(l, Exception) or l < 0:
+        //    return l
+        $this->offset += $l;
 
-                    # There is no writeSomeData implementation in Twisted which returns
-                    # < 0, but the documentation for writeSomeData used to claim negative
-                    # integers meant connection lost.  Keep supporting this here,
-                    # although it may be worth deprecating and removing at some point.
-                    if isinstance(l, Exception) or l < 0:
-                        return l
-                        $this->offset += l
-                        # If there is nothing left to send,
-                        if $this->offset == len($this->dataBuffer) and not $this->_tempDataLen:
-                            $this->dataBuffer = b""
-                            $this->offset = 0
-                            # stop writing.
-                            $this->stopWriting()
-                            # If I've got a producer who is supposed to supply me with data,
-                            if $this->producer is not None and ((not $this->streamingProducer)
-                                or $this->producerPaused):
-                                # tell them to supply some more.
-                                $this->producerPaused = 0
-                                $this->producer.resumeProducing()
-                                elif $this->disconnecting:
-                                # But if I was previously asked to let the connection die, do
-                                # so.
-                                return $this->_postLoseConnection()
-                                elif $this->_writeDisconnecting:
-                                # I was previously asked to half-close the connection.  We
-                                # set _writeDisconnected before calling handler, in case the
-                                # handler calls loseConnection(), which will want to check for
-                                # this attribute.
-                                $this->_writeDisconnected = True
-                                result = $this->_closeWriteConnection()
-                                return result
-                                return None
-      }*/
+        # If there is nothing left to send,
+
+        if ($this->offset == strlen($this->dataBuffer) && !$this->_tempDataLen) {
+            $this->dataBuffer = "";
+            $this->offset = 0;
+            # stop writing.
+            $this->stopWriting();
+            # If I've got a producer who is supposed to supply me with data,
+            if ($this->producer && ((!$this->streamingProducer) || $this->producerPaused)) {
+                # tell them to supply some more.
+                $this->producerPaused = 0;
+                $this->producer->resumeProducing();
+            }
+            elseif ($this->disconnecting) {
+                # But if I was previously asked to let the connection die, do
+                # so.
+                return $this->_postLoseConnection();
+            }
+            elseif ($this->_writeDisconnecting) {
+                # I was previously asked to half-close the connection.  We
+                # set _writeDisconnected before calling handler, in case the
+                # handler calls loseConnection(), which will want to check for
+                # this attribute.
+                $this->_writeDisconnected = True;
+                $result = $this->_closeWriteConnection();
+                return $result;
+            }
+        }
+        return null;
+
     }
 
     public function _postLoseConnection() {
@@ -144,18 +165,25 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
         # default implementation, telling reactor we're finished
         //return main.CONNECTION_DONE
     }
+
+
     public function _closeWriteConnection() {
         # override in subclasses
         // pass
     }
+
+
     public function writeConnectionLost($reason) {
         # in current code should never be called
         $this->connectionLost($reason);
     }
+
+
     public function readConnectionLost($reason) {
         # override in subclasses
         $this->connectionLost($reason);
     }
+
 
     /**
      * Determine whether the user-space send buffer for this transport is full
@@ -171,6 +199,8 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
         return ((strlen($this->dataBuffer) + $this->_tempDataLen) > $this->bufferSize);
 
     }
+
+
     /**
      * Possibly pause a producer, if there is one and the send buffer is full.
      */
@@ -181,12 +211,15 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
             if ($this->_isSendBufferFull()) {
                 # pause it.
                 $this->producerPaused = 1;
-                $this->producer.pauseProducing();
+                $this->producer->pauseProducing();
             }
         }
 
     }
-    /**Reliably write some data.
+
+
+    /**
+     * Reliably write some data.
      * 
      * The data is buffered until the underlying file descriptor is ready
      * for writing. If there is more than C{self.bufferSize} data in the
@@ -194,15 +227,15 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * C{pauseProducing()} method will be called.
      */
     public function write($data) {
-       // if isinstance(data, unicode): # no, really, I mean it
-       //     raise TypeError("Data must not be unicode")
-            if (!$this->connected || $this->_writeDisconnected){ 
-                return;
-            }
-            if ($data) {
-            $this->_tempDataBuffer .= $data;
+        // if isinstance(data, unicode): # no, really, I mean it
+        //     raise TypeError("Data must not be unicode")
+        if (!$this->connected || $this->_writeDisconnected){ 
+            return;
+        }
+        if ($data) {
+            $this->_tempDataBuffer[] = $data;
             $this->_tempDataLen += strlen($data);
-            //$this->_maybePauseProducer();
+            $this->_maybePauseProducer();
             $this->startWriting();
         }
     }
@@ -232,8 +265,10 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
                     for i in iovec:
                         $this->_tempDataLen += len(i)
                         $this->_maybePauseProducer()
-                        $this->startWriting()*/
+     $this->startWriting()*/
     }
+
+
     /**
      * Close the connection at the next available opportunity.
      *
@@ -248,47 +283,57 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * never close.
      */
     public function loseConnection( /* _connDone=failure.Failure(main.CONNECTION_DONE)*/) {
-
         if ($this->connected && !$this->disconnecting) {
             if ($this->_writeDisconnected) {
                 # doWrite won't trigger the connection close anymore
                 $this->stopReading();
                 $this->stopWriting();
-                $this->connectionLost(_connDone);
-            } else {
+                $this->connectionLost(/*_connDone*/);
+            }
+            else {
                 $this->stopReading();
                 $this->startWriting();
                 $this->disconnecting = 1;
             }
         }
     }
+
+
     public function loseWriteConnection() {
         $this->_writeDisconnecting = True;
         $this->startWriting();
     }
+
     /**
      * Stop waiting for read availability.
      *
      * 
      * Call this to remove this selectable from being notified when it is
      * ready for reading.
+     *
+     * @return void
      */
-
     public function stopReading() {
         $this->reactor->removeReader($this);
+
     }
-    
+
     /**
      * Stop waiting for write availability.
      * Call this to remove this selectable from being notified when it is ready
      * for writing.
+     *
+     * @return void
      */
     public function stopWriting() {
         $this->reactor->removeWriter($this);
+
     }
-    
+
     /**
      * Start waiting for read availability.
+     *
+     * @return void
      */
     public function startReading() {
         $this->reactor->addReader($this);
@@ -301,49 +346,53 @@ abstract class FileDescriptor implements IPushProducer, IReadWriteDescriptor, IC
      * writing.
      */
     public function startWriting() {
-       $this->reactor->addWriter($this);
+        $this->reactor->addWriter($this);
     }
-        # Producer/consumer implementation
+    # Producer/consumer implementation
 
-        # first, the consumer stuff.  This requires no additional work, as
-        # any object you can write to can be a consumer, really.
+    # first, the consumer stuff.  This requires no additional work, as
+    # any object you can write to can be a consumer, really.
 
-        public $producer = Null;
-        //bufferSize = 2**2**2**2
-        /**
-         * Stop consuming data.
-         *
-         * This is called when a producer has lost its connection, to tell the
-         * consumer to go lose its connection (and break potential circular
-         * references).
-         */
+    /**
+     * Stop consuming data.
+     *
+     * This is called when a producer has lost its connection, to tell the
+     * consumer to go lose its connection (and break potential circular
+     * references).
+     */
 
-        public function stopConsuming() {
-            $this->unregisterProducer();
-            $this->loseConnection();
-        }
-        /**
-         * producer interface implementation
-         */
-        public function resumeProducing() {
-            //assert $this->connected and not $this->disconnecting
-            $this->startReading();
-        }
-        public function pauseProducing() {
-            $this->stopReading();
-        }
+    public function stopConsuming() {
+        $this->unregisterProducer();
+        $this->loseConnection();
 
-        public function stopProducing(){
-            $this->loseConnection();
-        }
-
-        /**
-         * File Descriptor number for select().
-         *
-         * This method must be overridden or assigned in subclasses to
-         * indicate a valid file descriptor for the operating system.
-         */
-        public function fileno() {
-            return -1;
-        }
     }
+
+    /**
+     * producer interface implementation
+     */
+    public function resumeProducing()
+    {
+        //assert $this->connected and not $this->disconnecting
+        $this->startReading();
+    }
+
+    public function pauseProducing()
+    {
+        $this->stopReading();
+    }
+
+    public function stopProducing()
+    {
+        $this->loseConnection();
+    }
+
+    /**
+     * File Descriptor number for select().
+     *
+     * This method must be overridden or assigned in subclasses to
+     * indicate a valid file descriptor for the operating system.
+     */
+    public function fileno() {
+        return -1;
+    }
+}

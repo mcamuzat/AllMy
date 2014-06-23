@@ -1,18 +1,18 @@
 <?php
 interface IDelayedCall {
     /**
-    A scheduled call.
-
-    There are probably other useful methods we can add to this interface;
-    suggestions are welcome.
-    */
+     * A scheduled call.
+     *
+     * There are probably other useful methods we can add to this interface;
+     * suggestions are welcome.
+     */
 
     public function getTime();
         /**
-        Get time when delayed call will happen.
-
-        @return; time in seconds since epoch (a float).
-        */
+         * Get time when delayed call will happen.
+         *
+         *  @return; time in seconds since epoch (a float).
+         */
 
     public function cancel();
         /**

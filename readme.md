@@ -5,7 +5,7 @@ A mix between Reactphp and Twisted
 
 the hello world in Twisted is
 
-'''py
+```py
 from twisted.internet import protocol, reactor
 
 class Echo(protocol.Protocol):
@@ -18,10 +18,10 @@ class EchoFactory(protocol.Factory):
 
 reactor.listenTCP(1234, EchoFactory())
 reactor.run()
-'''
+```
 
 in Allmy
-'''php
+```php
 <?php
 
 require __DIR__.'/../vendor/autoload.php';
@@ -43,7 +43,7 @@ class EchoFactory extends Allmy\Protocol\ProtocolFactory {
 $reactor = Allmy\Reactor\Factory::create();
 $reactor->listenTcp('12345', new EchoFactory());
 $reactor->run();
-'''
+```
 
 huge amount of copy/paste from ReactPhp/Twisted.
 

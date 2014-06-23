@@ -1,18 +1,17 @@
 <?php
-interface IReactorTime {
     /**
     Time methods that a Reactor should implement.
     */
+interface IReactorTime {
 
-    public function seconds();
         /**
         Get the current time in seconds.
 
         @return: A number-like object of some sort.
         */
+    public function seconds();
 
 
-    public function callLater(delay, callable, *args, **kw);
         /**
         Call a function later.
 
@@ -30,9 +29,9 @@ interface IReactorTime {
                  It also may be rescheduled by calling its C{delay()} or
                  C{reset()} methods.
         */
+    public function callLater(delay, callable, *args, **kw);
 
 
-    public function getDelayedCalls();
         /**
         Retrieve all currently scheduled delayed calls.
 
@@ -40,4 +39,5 @@ interface IReactorTime {
                  currently scheduled calls. This is everything that has been
                  returned by C{callLater} but not yet called or canceled.
         */
+    public function getDelayedCalls();
 }

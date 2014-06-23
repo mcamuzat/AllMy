@@ -1,8 +1,8 @@
 <?php
-    /**Basic implementation of connector.
-     *
-     * State can be: "connecting", "connected", "disconnected"
-     */
+/**Basic implementation of connector.
+ *
+ * State can be: "connecting", "connected", "disconnected"
+ */
 class BaseConnector implements IConnector {
     protected state = null;
     protected timeoutID = null; 
@@ -18,7 +18,8 @@ class BaseConnector implements IConnector {
         $this->factory = $factory;
         $this->timeout = $timeout;
     }
-        /**Disconnect whatever our state is.*/
+
+    /**Disconnect whatever our state is.*/
     public function disconnect() {
         if ($this->state == CONNECTING) {
             $this->stopConnecting();
@@ -26,8 +27,9 @@ class BaseConnector implements IConnector {
         elseif ($this->state == CONNECTED) {
             $this->transport->loseConnection();
         }
+    }
 
-        /**Start connection to remote server.*/
+    /**Start connection to remote server.*/
     public function connect() {
         if ($this->state != DISCONNECTED) {
             throw RuntimeError("can't connect in this state");
@@ -41,15 +43,16 @@ class BaseConnector implements IConnector {
        
         $this->transport = $this->_makeTransport()
         if (!$this->timeout) {
-            $this->timeoutID = $this->reactor.callLater($this->timeout, transport.failIfNotConnected, error.TimeoutError())
+            $this->timeoutID = $this->reactor->addTimer($this->timeout, $transport->failIfNotConnected, $error->TimeoutError())
         }
         
         $this->factory->startedConnecting($this);
     }
     public function stopConnecting() {
         /**Stop attempting to connect.*/
-        if $this->state != "connecting":
-            raise error.NotConnectingError("we're not trying to connect")
+        if $this->state != "connecting" {
+            raise error->NotConnectingError("we're not trying to connect");
+        }
         $this->state = "disconnected"
         $this->transport.failIfNotConnected(error.UserError())
         del $this->transport
@@ -73,19 +76,20 @@ class BaseConnector implements IConnector {
         $this->transport = None
         $this->state = "disconnected"
         $this->factory->clientConnectionFailed(self, reason)
-        if $this->state == "disconnected":
+        if ($this->state == "disconnected") {
             # factory hasn't called our connect() method
-            $this->factory.doStop()
-            $this->factoryStarted = 0
+            $this->factory->doStop()
+                $this->factoryStarted = 0
+        }
 
     public function connectionLost(self, reason):
         $this->state = "disconnected"
-        $this->factory.clientConnectionLost(self, reason)
-        if $this->state == "disconnected":
+        $this->factory->clientConnectionLost(self, reason)
+        if ($this->state == "disconnected" ) {
             # factory hasn't called our connect() method
             $this->factory.doStop()
             $this->factoryStarted = 0
-
+        }
     public function getDestination(self):
         raise NotImplementedError(
             reflect.qual($this->__class__) + " did not implement "

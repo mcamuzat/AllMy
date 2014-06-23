@@ -65,6 +65,8 @@ interface IReactorSocket {
         */
 
     public function adoptStreamPort(fileDescriptor, addressFamily, factory);
+
+
         /**
         Add an existing connected I{SOCK_STREAM} socket to the reactor to
         monitor for data.
