@@ -67,7 +67,11 @@ class EventEmitter implements EventEmitterInterface
     public function emit($event, array $arguments = array())
     {
         foreach ($this->listeners($event) as $listener) {
-            call_user_func_array($listener, $arguments);
+            try {
+                call_user_func_array($listener, $arguments);
+            } catch (Exception $e) {
+                echo ($e->getTraceAsString());
+            }
         }
     }
 }
